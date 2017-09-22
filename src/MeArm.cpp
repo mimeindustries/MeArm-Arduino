@@ -1,13 +1,44 @@
 #include "MeArm.h"
 
 PCF8591 adc(I2C_DATA, I2C_CLOCK, PCF8591_ADDRESS);
+Marceau<12> marcel;
+
+MeArm *MeArm::mainInstance;
 
 MeArm::MeArm(){
+  mainInstance = this;
   setServoPins(MEARM_DEFAULT_BASE_PIN, MEARM_DEFAULT_LOWER_PIN, MEARM_DEFAULT_UPPER_PIN, MEARM_DEFAULT_GRIP_PIN);
+  marcel.addCmd("moveJointsTo", _moveJointsTo, false);
+  marcel.addCmd("moveBaseTo", _moveBaseTo, false);
+  marcel.addCmd("moveLowerTo", _moveLowerTo, false);
+  marcel.addCmd("moveUpperTo", _moveUpperTo, false);
+  marcel.addCmd("moveGripTo", _moveGripTo, false);
+  marcel.addCmd("openGrip", _openGrip, false);
+  marcel.addCmd("closeGrip", _closeGrip, false);
+  marcel.addCmd("getServoState", _getServoState, true);
+  marcel.addCmd("version", _version, true);
+  marcel.addCmd("pause", _empty, true);
+  marcel.addCmd("resume", _empty, true);
+  marcel.addCmd("stop", _empty, true);
+}
+
+void MeArm::generateAPName(char * name){
+  uint8_t mac[6];
+  WiFi.softAPmacAddress(mac);
+  sprintf(name, "MeArm-%02X%02X", mac[4], mac[5]);
 }
 
 void MeArm::begin(){
+  static char defaultAPName[11];
+  generateAPName(defaultAPName);
   setupServos();
+  Serial.begin(115200);
+  Serial.println(defaultAPName);
+  marcel.enableSerial(Serial);
+  marcel.enableWifi();
+  marcel.setHostname("local.mearm.com");
+  marcel.setDefaultAPName(defaultAPName);
+  marcel.begin();
   base.moveToCentre();
   lower.moveToCentre();
   upper.moveToCentre();
@@ -15,11 +46,15 @@ void MeArm::begin(){
 }
 
 void MeArm::loop(){
+  marcel.loop();
   joystickControl();
+  sendDiscovery();
+  checkDone();
 }
 
 void MeArm::joystickControl(){
   uint8_t rawValues[4];
+  bool changed = false;
   float scaledValue;
   if(adcNextSample < millis()){
     adcNextSample = millis() + 20;
@@ -31,7 +66,36 @@ void MeArm::joystickControl(){
         scaledValue -= (scaledValue < 0 ? -1 : 1) * JOYSTICK_THRESHOLD;
         //move the servo
         moveServoByPercent(i, scaledValue * 2);
+        changed = true;
       }
+    }
+  }
+  if(changed){
+    StaticJsonBuffer<500> outBuffer;
+    JsonObject& output = outBuffer.createObject();
+    JsonObject& msg = output.createNestedObject("msg");
+    msg["base"] = base.getCurrentAngle();
+    msg["lower"] = lower.getCurrentAngle();
+    msg["upper"] = upper.getCurrentAngle();
+    msg["grip"] = grip.getCurrentAngle();
+    marcel.notify("servoChange", output);
+  }
+}
+
+void MeArm::checkDone(){
+  if(base.ready() && lower.ready() && upper.ready() && grip.ready()){
+    marcel.cmdComplete();
+  }
+}
+
+void MeArm::sendDiscovery(){
+  if(nextDiscovery < millis()){
+    Serial.println("Sending discovery");
+    if(marcel.wifi.online){
+      send_discovery_request(WiFi.localIP(), marcel.settings.ap_ssid, "MeArm WiFi");
+      nextDiscovery = millis() + 30000;
+    }else{
+      nextDiscovery = millis() + 1000;
     }
   }
 }
@@ -61,8 +125,55 @@ void MeArm::setServoPins(uint8_t _basePin, uint8_t _lowerPin, uint8_t _upperPin,
 }
 
 void MeArm::setupServos(){
-  base.begin(basePin, 0, 180, -90);
+  base.begin(basePin, 0, 180, 90);
   lower.begin(lowerPin, 0, 90, 0);
   upper.begin(upperPin, 0, 135, 0);
-  grip.begin(gripPin, 90, 180, 0);
+  grip.begin(gripPin, 90, 180, 90);
+}
+
+void MeArm::getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  JsonObject& msg = output.createNestedObject("msg");
+  msg["base"] = base.getCurrentAngle();
+  msg["lower"] = lower.getCurrentAngle();
+  msg["upper"] = upper.getCurrentAngle();
+  msg["grip"] = grip.getCurrentAngle();
+}
+
+static void _moveJointsTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+}
+
+static void _openGrip(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->grip.moveToAngle(0);
+}
+
+static void _closeGrip(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->grip.moveToAngle(90);
+}
+
+static void _moveBaseTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->base.moveToAngle(atoi(input["arg"].asString()));
+}
+
+static void _moveLowerTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->lower.moveToAngle(atoi(input["arg"].asString()));
+}
+
+static void _moveUpperTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->upper.moveToAngle(atoi(input["arg"].asString()));
+}
+
+static void _moveGripTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  MeArm::mainInstance->grip.moveToAngle(atoi(input["arg"].asString()));
+}
+
+static void _getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  //return {base: servos.base.currentAngle, lower: servos.lower.currentAngle, upper: servos.upper.currentAngle, grip: servos.grip.currentAngle};
+  MeArm::mainInstance->getServoState(input, output);
+}
+
+static void _version(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
+  output["msg"] = VERSION;
+}
+
+static void _empty(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
 }

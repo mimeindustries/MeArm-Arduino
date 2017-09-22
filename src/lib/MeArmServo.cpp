@@ -4,6 +4,7 @@ MeArmServo::MeArmServo(){}
 
 void MeArmServo::begin(int pin, int min, int max, int offset){
   _servo.attach(pin);
+  readyTime = 0;
   maxAngle = max;
   minAngle = min;
   offsetAngle = offset;
@@ -26,6 +27,7 @@ void MeArmServo::updateServo(){
 }
 
 void MeArmServo::setCurrentAngle(float angle){
+  int diff = abs(angle - currentAngle);
   if(angle < minAngle){
     currentAngle = minAngle;
   }else if(angle > maxAngle){
@@ -34,8 +36,12 @@ void MeArmServo::setCurrentAngle(float angle){
     currentAngle = angle;
   }
   updateServo();
-  Serial.println(currentAngle);
+  readyTime = millis() + (diff * 2.5); //approx 2.5ms / degree
   _servo.write(currentAngle);
+}
+
+float MeArmServo::getCurrentAngle(){
+  return currentAngle - offsetAngle;
 }
 
 void MeArmServo::moveToAngle(float angle){
@@ -48,4 +54,8 @@ void MeArmServo::moveByDegrees(float angle){
 
 void MeArmServo::moveByPercent(float percent){
   setCurrentAngle(currentAngle + (((maxAngle - minAngle) / 100.0 ) * percent));
+}
+
+bool MeArmServo::ready(){
+  return millis() >= readyTime;
 }

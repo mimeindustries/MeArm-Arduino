@@ -11,12 +11,15 @@ class MeArmServo{
     void moveToAngle(float);
     void moveByDegrees(float);
     void moveByPercent(float);
+    bool ready();
+    float getCurrentAngle();
   private:
     Servo _servo;
     float currentAngle;
     int maxAngle;
     int minAngle;
     int offsetAngle;
+    long readyTime;
     void updateServo();
     void setCurrentAngle(float);
 };
