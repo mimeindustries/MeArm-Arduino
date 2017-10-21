@@ -32,8 +32,7 @@ void MeArm::begin(){
   static char defaultAPName[11];
   generateAPName(defaultAPName);
   setupServos();
-  Serial.begin(115200);
-  Serial.println(defaultAPName);
+  Serial.begin(230400);
   marcel.enableSerial(Serial);
   marcel.enableWifi();
   marcel.setHostname("local.mearm.com");
@@ -90,7 +89,6 @@ void MeArm::checkDone(){
 
 void MeArm::sendDiscovery(){
   if(nextDiscovery < millis()){
-    Serial.println("Sending discovery");
     if(marcel.wifi.online){
       send_discovery_request(WiFi.localIP(), marcel.settings.ap_ssid, "MeArm WiFi");
       nextDiscovery = millis() + 30000;
