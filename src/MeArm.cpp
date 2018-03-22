@@ -1,7 +1,7 @@
 #include "MeArm.h"
 
 PCF8591 adc(I2C_DATA, I2C_CLOCK, PCF8591_ADDRESS);
-Marceau<12> marcel;
+Marceau<14> marcel;
 
 MeArm *MeArm::mainInstance;
 
@@ -20,6 +20,10 @@ MeArm::MeArm(){
   marcel.addCmd("pause", _empty, true);
   marcel.addCmd("resume", _empty, true);
   marcel.addCmd("stop", _empty, true);
+#ifdef ESP8266
+  marcel.addCmd("updateFirmware",   _updateFirmware,   true);
+  marcel.addCmd("updateUI",         _updateUI,         true);
+#endif //ESP8266
 }
 
 void MeArm::generateAPName(char * name){
@@ -49,6 +53,7 @@ void MeArm::loop(){
   joystickControl();
   sendDiscovery();
   checkDone();
+  updateHandler();
 }
 
 void MeArm::joystickControl(){
@@ -137,6 +142,37 @@ void MeArm::getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObjec
   msg["grip"] = grip.getCurrentAngle();
 }
 
+#ifdef ESP8266
+void MeArm::updateFirmware(){
+  if(marcel.wifi.online){
+    ESPhttpUpdate.rebootOnUpdate(true);
+    if(ESPhttpUpdate.update("http://downloads.mime.co.uk/MeArm/WiFi/v1/mirobot-latest.bin", "") != HTTP_UPDATE_OK){
+      Serial.println(ESPhttpUpdate.getLastErrorString());
+    }
+  }
+}
+
+void MeArm::updateUI(){
+  if(marcel.wifi.online){
+    ESPhttpUpdate.rebootOnUpdate(false);
+    if(ESPhttpUpdate.updateSpiffs("http://downloads.mime.co.uk/MeArm/WiFi/v1/ui-latest.bin", "") != HTTP_UPDATE_OK){
+      Serial.println(ESPhttpUpdate.getLastErrorString());
+    }
+  }
+}
+
+void MeArm::updateHandler(){
+  if(_updateFWflag){
+    _updateFWflag = false;
+    updateFirmware();
+  }
+  if(_updateUIflag){
+    _updateUIflag = false;
+    updateUI();
+  }
+}
+#endif //ESP8266
+
 static void _moveJointsTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
 }
 
@@ -165,7 +201,6 @@ static void _moveGripTo(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject 
 }
 
 static void _getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
-  //return {base: servos.base.currentAngle, lower: servos.lower.currentAngle, upper: servos.upper.currentAngle, grip: servos.grip.currentAngle};
   MeArm::mainInstance->getServoState(input, output);
 }
 
@@ -175,3 +210,12 @@ static void _version(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &ou
 
 static void _empty(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output){
 }
+
+#ifdef ESP8266
+static void _updateFirmware(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+  MeArm::mainInstance->_updateFWflag = true;
+}
+static void _updateUI(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+  MeArm::mainInstance->_updateUIflag = true;
+}
+#endif //ESP8266

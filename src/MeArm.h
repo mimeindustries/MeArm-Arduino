@@ -7,6 +7,7 @@
 #include "lwip/inet.h"
 #include "espconn.h"
 #include <ESP8266WiFi.h>
+#include <ESP8266httpUpdate.h>
 #include <Marceau.h>
 
 #define MEARM_DEFAULT_BASE_PIN 16
@@ -38,6 +39,11 @@ static void _getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObje
 static void _version(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output);
 static void _empty(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output);
 
+#ifdef ESP8266
+static void _updateFirmware(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+static void _updateUI(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+#endif //ESP8266
+
 class MeArm {
   public:
     MeArm();
@@ -51,6 +57,11 @@ class MeArm {
     MeArmServo grip;
     void getServoState(ArduinoJson::JsonObject &input, ArduinoJson::JsonObject &output);
     static MeArm * mainInstance;
+    void updateFirmware();
+    void updateHandler();
+    void updateUI();
+    boolean _updateFWflag = false;
+    boolean _updateUIflag = false;
   private:
     long adcNextSample = 0;
     int basePin;

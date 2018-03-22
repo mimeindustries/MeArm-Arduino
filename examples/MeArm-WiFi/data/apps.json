@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "apps":[
+    {
+      "id":"blockly",
+      "name":"Blockly",
+      "description": "Control MeArm using this powerful drag and drop language",
+      "js":"blockly.js"
+    },
+    {
+      "id":"javascript",
+      "name":"Javascript",
+      "description": "Use the programming language of the web to control MeArm",
+      "js":"javascript.js"
+    },
+    {
+      "id":"python",
+      "name":"Python",
+      "description": "Use this powerful language to control MeArm in your browser",
+      "js":"python.js"
+    },
+    {
+      "id":"snap",
+      "name":"Snap!",
+      "description": "Snap! is very similar to Scratch and is good for learning to code",
+      "js":"snap.js"
+    }
+  ]
+}
