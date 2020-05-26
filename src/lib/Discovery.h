@@ -7,7 +7,7 @@ extern "C" {
 #include "espconn.h"
 }
 
-#define DISCOVERY_HOST "local.mirobot.io"
+#define DISCOVERY_HOST "local.mearm.com"
 
 void send_discovery_request(uint32_t, char *, char *);
 

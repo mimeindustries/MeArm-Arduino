@@ -51,7 +51,7 @@ void send_discovery_request(uint32_t _ip, char * _name, char * _type){
   strcpy(device_name, _name);
   strcpy(device_type, _type);
   os_printf("Fetching DNS\n");
-  espconn_gethostbyname(&conn, "local.mirobot.io", &ip, DNSFoundCb);
+  espconn_gethostbyname(&conn, "local.mearm.com", &ip, DNSFoundCb);
 }
 
 #endif
