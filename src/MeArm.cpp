@@ -8,18 +8,19 @@ MeArm *MeArm::mainInstance;
 MeArm::MeArm(){
   mainInstance = this;
   setServoPins(MEARM_DEFAULT_BASE_PIN, MEARM_DEFAULT_LOWER_PIN, MEARM_DEFAULT_UPPER_PIN, MEARM_DEFAULT_GRIP_PIN);
-  marcel.addCmd("moveJointsTo", _moveJointsTo, false);
-  marcel.addCmd("moveBaseTo", _moveBaseTo, false);
-  marcel.addCmd("moveLowerTo", _moveLowerTo, false);
-  marcel.addCmd("moveUpperTo", _moveUpperTo, false);
-  marcel.addCmd("moveGripTo", _moveGripTo, false);
-  marcel.addCmd("openGrip", _openGrip, false);
-  marcel.addCmd("closeGrip", _closeGrip, false);
-  marcel.addCmd("getServoState", _getServoState, true);
-  marcel.addCmd("version", _version, true);
-  marcel.addCmd("pause", _empty, true);
-  marcel.addCmd("resume", _empty, true);
-  marcel.addCmd("stop", _empty, true);
+  //Command name    Handler function   Returns immediately?
+  marcel.addCmd("moveJointsTo",     _moveJointsTo,    false);
+  marcel.addCmd("moveBaseTo",       _moveBaseTo,      false);
+  marcel.addCmd("moveLowerTo",      _moveLowerTo,     false);
+  marcel.addCmd("moveUpperTo",      _moveUpperTo,     false);
+  marcel.addCmd("moveGripTo",       _moveGripTo,      false);
+  marcel.addCmd("openGrip",         _openGrip,        false);
+  marcel.addCmd("closeGrip",        _closeGrip,       false);
+  marcel.addCmd("getServoState",    _getServoState,    true);
+  marcel.addCmd("version",          _version,          true);
+  marcel.addCmd("pause",            _empty,            true);
+  marcel.addCmd("resume",           _empty,            true);
+  marcel.addCmd("stop",             _empty,            true);
 #ifdef ESP8266
   marcel.addCmd("updateFirmware",   _updateFirmware,   true);
   marcel.addCmd("updateUI",         _updateUI,         true);
@@ -38,9 +39,9 @@ void MeArm::begin(){
   setupServos();
   Serial.begin(230400);
   marcel.enableSerial(Serial);
-  marcel.enableWifi();
-  marcel.setHostname("local.mearm.com");
   marcel.setDefaultAPName(defaultAPName);
+  marcel.setHostname("local.mearm.com");
+  marcel.enableWifi();
   marcel.begin();
   base.moveToCentre();
   lower.moveToCentre();
@@ -95,7 +96,7 @@ void MeArm::checkDone(){
 void MeArm::sendDiscovery(){
   if(nextDiscovery < millis()){
     if(marcel.wifi.online){
-      send_discovery_request(WiFi.localIP(), marcel.settings.ap_ssid, "MeArm WiFi");
+      send_discovery_request((uint32_t)WiFi.localIP(), marcel.settings.ap_ssid, "MeArm WiFi");
       nextDiscovery = millis() + 30000;
     }else{
       nextDiscovery = millis() + 1000;
